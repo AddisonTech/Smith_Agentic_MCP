@@ -68,7 +68,11 @@ def _post(path: str, body: dict, timeout: float = 10.0) -> dict:
     except httpx.ConnectError:
         raise RuntimeError(_NOT_RUNNING)
     except httpx.HTTPStatusError as e:
-        raise RuntimeError(f"HTTP {e.response.status_code}: {e.response.text}")
+        try:
+            msg = e.response.json().get("error") or e.response.json().get("detail") or e.response.text
+        except Exception:
+            msg = e.response.text
+        raise RuntimeError(f"HTTP {e.response.status_code}: {msg}")
 
 
 # ── Tools ─────────────────────────────────────────────────────────────────────
@@ -155,8 +159,6 @@ def run_crew(
         data = _post("/api/run", body)
     except RuntimeError as e:
         return str(e)
-    if "error" in data:
-        return f"Error: {data['error']}"
     run_id = data["run_id"]
     return (
         f"Run started.\n"
@@ -190,9 +192,6 @@ def get_run_status(run_id: str) -> str:
         data = _get(f"/api/run/{run_id}")
     except RuntimeError as e:
         return str(e)
-    if "error" in data:
-        return f"Run '{run_id}' not found."
-
     status = data["status"]
     output = data.get("output", [])
     recent = output[-20:]
@@ -259,6 +258,8 @@ def read_output_file(path: str) -> str:
         return f"--- {path} ---\n{content}"
     except httpx.ConnectError:
         return _NOT_RUNNING
+    except httpx.HTTPStatusError as e:
+        return f"HTTP {e.response.status_code}: {e.response.text}"
 
 
 # ── Entry ─────────────────────────────────────────────────────────────────────
