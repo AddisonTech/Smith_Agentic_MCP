@@ -262,6 +262,26 @@ def read_output_file(path: str) -> str:
         return f"HTTP {e.response.status_code}: {e.response.text}"
 
 
+@mcp.tool()
+def cancel_run(run_id: str) -> str:
+    """
+    Stop an active crew run.
+
+    Sends a cancellation signal to the run. The crew will finish its current
+    step and then stop cleanly. The run status will become 'cancelled'.
+
+    Args:
+        run_id: The ID of the run to cancel, as returned by run_crew().
+
+    Returns a confirmation or an error if the run is not active.
+    """
+    try:
+        data = _post(f"/api/run/{run_id}/cancel", {})
+    except RuntimeError as e:
+        return str(e)
+    return f"Cancellation signal sent to run '{run_id}'. Status: {data.get('status', 'unknown')}."
+
+
 # ── Entry ─────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
